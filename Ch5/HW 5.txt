@@ -1,0 +1,77 @@
+db.posts.aggregate([{$unwind:"$comments"},{$limit:2},{$project:{body:0,tags:0}]).pretty()
+
+5.1 answer
+db.posts.aggregate([{$unwind:"$comments"},{$group:{_id:"$comments.author",count:{$sum:1}}},{$sort:{count:-1}}]).pretty()
+
+5.2
+db.zips.aggregate([{$match:{$and:[{$or:[{state:"CA"},{state:"NY"}]},{pop:{$gte:25000}}]}},{$group:{_id:{$or:[{state:"CA"},{state:"NY"}]},av_pop:{$avg:"$pop"}}}]) still guessed correct. 
+refer to hw5.4 for correct method. 
+
+5.3
+db.grades.aggregate([{$group:{_id:"$class_id", Students:{$sum:1}}}])
+
+	Step 1
+		db.grades.aggregate([{$unwind:"$scores"}])
+
+		{$group:{_id:{class:"$class_id",student:"$student_id"},avg_score:{$avg:"$scores.score"}}} avg is not right but 
+		
+		{$match:{$or:[{"scores.type":"exam"},{"scores.type":"homework"}]}} 
+		
+	Average of students for in the class
+		db.grades.aggregate([{$unwind:"$scores"},{$match:{$or:[{"scores.type":"exam"},{"scores.type":"homework"}]}},{$group:{_id:{class:"$class_id",student:"$student_id"},avg_score:{$avg:"$scores.score"}}}])
+		
+	Step 2
+		{$group:{_id:"$_id.class",avg_class_score:{$avg:"$avg_score"}}}
+	Average of students score per class
+		db.grades.aggregate([{$unwind:"$scores"},{$match:{$or:[{"scores.type":"exam"},{"scores.type":"homework"}]}},{$group:{_id:{class:"$class_id",student:"$student_id"},avg_score:{$avg:"$scores.score"}}},{$group:{_id:"$_id.class",avg_class_score:{$avg:"$avg_score"}}}])	
+
+	Step 3
+		{$sort:{avg_class_score:-1}}
+	Sorted	
+		db.grades.aggregate([{$unwind:"$scores"},{$match:{$or:[{"scores.type":"exam"},{"scores.type":"homework"}]}},{$group:{_id:{class:"$class_id",student:"$student_id"},avg_score:{$avg:"$scores.score"}}},{$group:{_id:"$_id.class",avg_class_score:{$avg:"$avg_score"}}},{$sort:{avg_class_score:-1}}])	
+		
+5.4
+	Step 1:
+	Get the first character of the city 
+		db.zips.aggregate([
+			{$project:
+			 {
+			first_char: {$substr : ["$city",0,1]},
+			 }
+		   }
+		])
+	
+	Step 2: Return all fields . Assume _id is correct
+		db.zips.aggregate([{$project:{first_char: {$substr : ["$city",0,1]},_id:1,pop:1}}])
+	
+	----
+	Step 3 $match BDOGNM
+	Step 3.1: 
+		{$match:{first_char:"A"}}
+		db.zips.aggregate([{$project:{first_char: {$substr : ["$city",0,1]},_id:1,pop:1}},{$match:{first_char:"A"}}])
+	Step 3.2
+		db.zips.aggregate([{$project:{first_char: {$substr : ["$city",0,1]},_id:1,pop:1}},{$match:{$or:[{first_char:"B"},{first_char:"D"},{first_char:"O"},{first_char:"G"},{first_char:"N"},{first_char:"M"}]}}])
+
+	--- Correct by manually summing. 
+	Step 3. $group by BDOGNM compound
+		{$group:{_id:{first_char:"$first_char"},sum_pop:{$sum:"$pop"}}}
+		db.zips.aggregate([{$project:{first_char: {$substr : ["$city",0,1]},_id:1,pop:1}},{$match:{$or:[{first_char:"B"},{first_char:"D"},{first_char:"O"},{first_char:"G"},{first_char:"N"},{first_char:"M"}]}},{$group:{_id:{first_char:"$first_char"},sum_pop:{$sum:"$pop"}}}])
+	
+
+	
+	---- Wrong answer
+	Step 3. $group by BDOGNM 
+	Step 3.1 $or B,D
+		{$group:{_id:{$or:[{first_char:"B"},{first_char:"D"}]},sum_pop:{$sum:"$pop"}}}		
+		db.zips.aggregate([{$project:{first_char: {$substr : ["$city",0,1]},_id:1,pop:1}},{$group:{_id:{$or:[{first_char:"B"},{first_char:"D"}]},sum_pop:{$sum:"$pop"}}}])
+	Step 3.2 $or BDOGNM
+		db.zips.aggregate([{$project:{first_char: {$substr : ["$city",0,1]},_id:1,pop:1}},{$group:{_id:{$or:[{first_char:"B"},{first_char:"D"},{first_char:"O"},{first_char:"G"},{first_char:"N"},{first_char:"M"}]},sum_pop:{$sum:"$pop"}}}])
+		
+		
+	---- Wrong answer
+
+	Step 4. $group by zip, $sum pop
+		{$group:{_id:"$_id",total_pop:{$sum:"$pop"}}}
+		db.zips.aggregate([{$project:{first_char: {$substr : ["$city",0,1]},_id:1,pop:1}},{$match:{$or:[{first_char:"B"},{first_char:"D"},{first_char:"O"},{first_char:"G"},{first_char:"N"},{first_char:"M"}]}},{$group:{_id:"$_id",total_pop:{$sum:"$pop"}}}])
+	
+	
